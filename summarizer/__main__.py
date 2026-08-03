@@ -8,7 +8,7 @@ import argparse
 import os
 import sys
 
-import openai
+from openai import OpenAI
 from dotenv import load_dotenv
 
 from summarizer.embeddings import embed_text
@@ -16,9 +16,9 @@ from summarizer.embeddings import embed_text
 SYSTEM_PROMPT = "You are a concise assistant that summarizes documents in a few sentences."
 
 
-def summarize(text: str, model: str = "gpt-3.5-turbo") -> str:
+def summarize(client: OpenAI, text: str, model: str = "gpt-3.5-turbo") -> str:
     """Return a short summary of ``text`` using the Chat Completion API."""
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -27,7 +27,7 @@ def summarize(text: str, model: str = "gpt-3.5-turbo") -> str:
         temperature=0.3,
         max_tokens=256,
     )
-    return response["choices"][0]["message"]["content"].strip()
+    return response.choices[0].message.content.strip()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     load_dotenv()
-    openai.api_key = os.environ["OPENAI_API_KEY"]
+    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
     try:
         with open(args.path, encoding="utf-8") as handle:
@@ -52,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: cannot read {args.path}: {exc}", file=sys.stderr)
         return 1
 
-    summary = summarize(text, model=args.model)
+    summary = summarize(client, text, model=args.model)
     print(summary)
 
     if args.embed:
